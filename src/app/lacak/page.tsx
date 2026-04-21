@@ -96,10 +96,10 @@ export default function LacakPage() {
 
   const navLinks = [
     { label: "Dashboard", href: "/dashboard", icon: "🏠" },
-    { label: "Pengiriman", href: "#", icon: "📮" },
-    { label: "Lacak", href: "#", icon: "🔍", active: true },
-    { label: "History", href: "#", icon: "📋" },
-    { label: "About Us", href: "#", icon: "ℹ️" },
+    { label: "Pengiriman", href: "pengiriman", icon: "📮" },
+    { label: "Lacak", href: "lacak", icon: "🔍", active: true },
+    { label: "History", href: "history", icon: "📋" },
+    { label: "about", href: "about", icon: "ℹ️" },
   ];
 
   return (

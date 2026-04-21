@@ -10,7 +10,7 @@ export default function DashboardLayout({
 }: {
   children: React.ReactNode;
 }) {
-  const [collapsed, setCollapsed] = useState(false);
+  const [sidebarOpen, setSidebarOpen] = useState(false);
   const router = useRouter();
   const pathname = usePathname();
 
@@ -27,17 +27,61 @@ export default function DashboardLayout({
     router.push("/login");
   };
 
+  const handleNavigate = (path: string) => {
+    router.push(path);
+    setSidebarOpen(false); // tutup sidebar setelah navigate
+  };
+
   return (
     <div className={styles.wrapper}>
-      
+
+      {/* OVERLAY — klik di luar sidebar untuk tutup */}
+      {sidebarOpen && (
+        <div
+          onClick={() => setSidebarOpen(false)}
+          style={{
+            position: "fixed",
+            inset: 0,
+            background: "rgba(0,0,0,0.45)",
+            zIndex: 200,
+            backdropFilter: "blur(2px)",
+          }}
+        />
+      )}
+
       {/* SIDEBAR */}
-      <aside className={`${styles.sidebar} ${collapsed ? styles.collapsed : ""}`}>
-        
+      <aside
+        className={styles.sidebar}
+        style={{
+          position: "fixed",
+          top: 0,
+          left: sidebarOpen ? 0 : "-280px",
+          width: "260px",
+          height: "100vh",
+          zIndex: 300,
+          transition: "left 0.3s cubic-bezier(0.4, 0, 0.2, 1)",
+          boxShadow: sidebarOpen ? "4px 0 32px rgba(0,0,0,0.18)" : "none",
+        }}
+      >
+
         {/* LOGO */}
         <div className={styles.logo}>
-          {!collapsed && <span>SwiftSend</span>}
-          <button onClick={() => setCollapsed(!collapsed)}>
-            {collapsed ? "➡️" : "⬅️"}
+          <span>SwiftSend</span>
+          <button
+            onClick={() => setSidebarOpen(false)}
+            style={{
+              background: "none",
+              border: "none",
+              cursor: "pointer",
+              fontSize: "20px",
+              lineHeight: 1,
+              padding: "4px",
+              borderRadius: "6px",
+              transition: "background 0.2s",
+            }}
+            title="Tutup menu"
+          >
+            ✕
           </button>
         </div>
 
@@ -49,11 +93,11 @@ export default function DashboardLayout({
             return (
               <div
                 key={i}
-                onClick={() => router.push(item.path)}
+                onClick={() => handleNavigate(item.path)}
                 className={`${styles.navItem} ${active ? styles.active : ""}`}
               >
                 <span className={styles.icon}>{item.icon}</span>
-                {!collapsed && <p>{item.name}</p>}
+                <p>{item.name}</p>
               </div>
             );
           })}
@@ -61,26 +105,42 @@ export default function DashboardLayout({
 
         {/* FOOTER */}
         <div className={styles.footer}>
-          {!collapsed && (
-            <>
-              <p className={styles.username}>Nikol</p>
-              <span className={styles.role}>User</span>
-            </>
-          )}
+          <p className={styles.username}>Nikol</p>
+          <span className={styles.role}>User</span>
           <button onClick={handleLogout} className={styles.logout}>
             ⏻
           </button>
         </div>
+
       </aside>
 
       {/* MAIN */}
       <div className={styles.main}>
-        
+
         {/* TOPBAR */}
         <header className={styles.topbar}>
-          
+
           <div className={styles.left}>
-            <button onClick={() => setCollapsed(!collapsed)}>☰</button>
+            {/* HAMBURGER BUTTON */}
+            <button
+              onClick={() => setSidebarOpen(true)}
+              style={{
+                background: "none",
+                border: "none",
+                cursor: "pointer",
+                display: "flex",
+                flexDirection: "column",
+                gap: "5px",
+                padding: "6px",
+                borderRadius: "8px",
+                transition: "background 0.2s",
+              }}
+              title="Buka menu"
+            >
+              <span style={{ display: "block", width: "22px", height: "2px", background: "currentColor", borderRadius: "2px" }} />
+              <span style={{ display: "block", width: "22px", height: "2px", background: "currentColor", borderRadius: "2px" }} />
+              <span style={{ display: "block", width: "22px", height: "2px", background: "currentColor", borderRadius: "2px" }} />
+            </button>
             <span className={styles.breadcrumb}>
               SwiftSend / {pathname.replace("/", "")}
             </span>
