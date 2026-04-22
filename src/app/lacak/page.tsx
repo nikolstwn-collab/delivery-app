@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter, usePathname } from "next/navigation";
 
 interface TrackingEvent {
   status: string;
@@ -68,403 +69,305 @@ const dummyData: Record<string, TrackingResult> = {
   },
 };
 
+const menu = [
+  { name: "Dashboard", path: "/dashboard", icon: "🏠" },
+  { name: "Pengiriman", path: "/kirim", icon: "📦" },
+  { name: "Lacak Paket", path: "/lacak", icon: "🔍" },
+  { name: "History", path: "/history", icon: "📜" },
+  { name: "About Us", path: "/about", icon: "ℹ️" },
+];
+
 export default function LacakPage() {
+  const [sidebarOpen, setSidebarOpen] = useState(false);
   const [resiInput, setResiInput] = useState("");
   const [result, setResult] = useState<TrackingResult | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
-  const [sidebarOpen, setSidebarOpen] = useState(false);
+  const router = useRouter();
+  const pathname = usePathname();
 
+  const handleNavigate = (path: string) => { router.push(path); setSidebarOpen(false); };
   const handleTrack = () => {
-    if (!resiInput.trim()) {
-      setError("Masukkan nomor resi terlebih dahulu.");
-      return;
-    }
-    setError("");
-    setLoading(true);
-    setResult(null);
+    if (!resiInput.trim()) { setError("Masukkan nomor resi terlebih dahulu."); return; }
+    setError(""); setLoading(true); setResult(null);
     setTimeout(() => {
       const found = dummyData[resiInput.trim().toUpperCase()];
-      if (found) {
-        setResult(found);
-      } else {
-        setError("Nomor resi tidak ditemukan. Coba: CGL-2024-00123 atau CGL-2024-00456");
-      }
+      found ? setResult(found) : setError("Nomor resi tidak ditemukan. Coba: CGL-2024-00123 atau CGL-2024-00456");
       setLoading(false);
     }, 1200);
   };
 
-  const navLinks = [
-    { label: "Dashboard", href: "/dashboard", icon: "🏠" },
-    { label: "Pengiriman", href: "pengiriman", icon: "📮" },
-    { label: "Lacak", href: "lacak", icon: "🔍", active: true },
-    { label: "History", href: "history", icon: "📋" },
-    { label: "about", href: "about", icon: "ℹ️" },
-  ];
+  const S: React.CSSProperties & Record<string, unknown> = {};
 
   return (
-    <div style={{ fontFamily: "'Sora', 'Segoe UI', sans-serif", minHeight: "100vh", background: "#f0fdf4" }}>
+    <>
       <style>{`
         @import url('https://fonts.googleapis.com/css2?family=Sora:wght@300;400;500;600;700;800&display=swap');
+        .lk-page{font-family:'Sora','Segoe UI',sans-serif;min-height:100vh;background:#f0fdf4;}
 
-        * { box-sizing: border-box; margin: 0; padding: 0; }
+        /* overlay */
+        .lk-ov{display:none;position:fixed;inset:0;background:rgba(0,0,0,0.45);z-index:200;backdrop-filter:blur(2px);}
+        .lk-ov.open{display:block;}
 
-        .topbar {
-          position: sticky; top: 0; z-index: 100;
-          background: linear-gradient(135deg, #064e3b 0%, #065f46 50%, #047857 100%);
-          box-shadow: 0 2px 20px rgba(6,78,59,0.4);
-          padding: 0 24px;
-          height: 64px;
-          display: flex; align-items: center; justify-content: space-between;
-        }
-        .logo-text {
-          font-size: 22px; font-weight: 800; color: #fff; letter-spacing: -0.5px;
-        }
-        .logo-text span { color: #6ee7b7; }
-        .nav-desktop {
-          display: flex; gap: 4px;
-        }
-        .nav-link {
-          padding: 8px 16px; border-radius: 8px; color: #a7f3d0;
-          font-size: 14px; font-weight: 500; cursor: pointer;
-          transition: all 0.2s; text-decoration: none; display: flex; align-items: center; gap: 6px;
-          border: none; background: transparent;
-        }
-        .nav-link:hover { background: rgba(255,255,255,0.1); color: #fff; }
-        .nav-link.active { background: rgba(110,231,183,0.15); color: #6ee7b7; font-weight: 600; border: 1px solid rgba(110,231,183,0.3); }
-        .hamburger {
-          display: none; flex-direction: column; gap: 5px; cursor: pointer;
-          background: none; border: none; padding: 4px;
-        }
-        .hamburger span { display: block; width: 24px; height: 2px; background: #fff; border-radius: 2px; transition: 0.3s; }
-        .sidebar-overlay {
-          display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 200;
-        }
-        .sidebar-overlay.open { display: block; }
-        .sidebar {
-          position: fixed; top: 0; left: -280px; width: 280px; height: 100vh;
-          background: linear-gradient(180deg, #064e3b, #047857);
-          z-index: 300; transition: left 0.3s ease; padding: 24px 0;
-        }
-        .sidebar.open { left: 0; }
-        .sidebar-header { padding: 0 24px 24px; border-bottom: 1px solid rgba(255,255,255,0.1); margin-bottom: 16px; display: flex; justify-content: space-between; align-items: center; }
-        .sidebar-close { background: none; border: none; color: #a7f3d0; font-size: 24px; cursor: pointer; }
-        .sidebar-link { display: flex; align-items: center; gap: 12px; padding: 14px 24px; color: #a7f3d0; font-size: 15px; font-weight: 500; cursor: pointer; transition: 0.2s; text-decoration: none; }
-        .sidebar-link:hover, .sidebar-link.active { background: rgba(255,255,255,0.1); color: #fff; }
-        .sidebar-link.active { border-left: 3px solid #6ee7b7; }
+        /* sidebar */
+        .lk-sb{position:fixed;top:0;left:-270px;width:256px;height:100vh;background:linear-gradient(180deg,#064e3b 0%,#065f46 60%,#047857 100%);z-index:300;transition:left .3s cubic-bezier(.4,0,.2,1);display:flex;flex-direction:column;box-shadow:none;}
+        .lk-sb.open{left:0;box-shadow:4px 0 32px rgba(0,0,0,0.18);}
 
-        .hero-section {
-          background: linear-gradient(135deg, #064e3b 0%, #065f46 40%, #059669 80%, #10b981 100%);
-          padding: 60px 24px 80px;
-          text-align: center; position: relative; overflow: hidden;
-        }
-        .hero-section::before {
-          content: ''; position: absolute; inset: 0;
-          background: url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23ffffff' fill-opacity='0.03'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E");
-        }
-        .hero-badge {
-          display: inline-flex; align-items: center; gap: 6px;
-          background: rgba(110,231,183,0.15); border: 1px solid rgba(110,231,183,0.3);
-          color: #6ee7b7; font-size: 12px; font-weight: 600; letter-spacing: 1px; text-transform: uppercase;
-          padding: 6px 14px; border-radius: 100px; margin-bottom: 20px;
-        }
-        .hero-title {
-          font-size: clamp(28px, 5vw, 48px); font-weight: 800; color: #fff; line-height: 1.15;
-          margin-bottom: 12px; letter-spacing: -1px;
-        }
-        .hero-title span { color: #6ee7b7; }
-        .hero-sub { color: #a7f3d0; font-size: 16px; max-width: 500px; margin: 0 auto 36px; line-height: 1.6; }
+        .lk-sb-head{display:flex;align-items:center;justify-content:space-between;padding:18px 18px 14px;border-bottom:1px solid rgba(255,255,255,.1);}
+        .lk-sb-logo{font-size:19px;font-weight:800;color:#fff;letter-spacing:-.5px;}
+        .lk-sb-logo span{color:#6ee7b7;}
+        .lk-sb-x{background:rgba(255,255,255,.08);border:none;cursor:pointer;width:30px;height:30px;border-radius:8px;display:flex;align-items:center;justify-content:center;transition:background .2s;color:#a7f3d0;font-size:16px;}
+        .lk-sb-x:hover{background:rgba(255,255,255,.18);}
 
-        .search-card {
-          background: #fff; border-radius: 20px; padding: 28px;
-          max-width: 640px; margin: 0 auto;
-          box-shadow: 0 20px 60px rgba(0,0,0,0.2); position: relative; z-index: 1;
-        }
-        .search-label { font-size: 13px; font-weight: 600; color: #065f46; margin-bottom: 10px; display: block; letter-spacing: 0.3px; }
-        .input-wrapper { display: flex; gap: 10px; }
-        .resi-input {
-          flex: 1; padding: 14px 18px; border: 2px solid #d1fae5; border-radius: 12px;
-          font-size: 15px; font-family: inherit; color: #064e3b; background: #f0fdf4;
-          outline: none; transition: border 0.2s;
-        }
-        .resi-input:focus { border-color: #059669; background: #fff; }
-        .resi-input::placeholder { color: #9ca3af; }
-        .track-btn {
-          padding: 14px 28px; background: linear-gradient(135deg, #059669, #047857);
-          color: #fff; border: none; border-radius: 12px; font-size: 15px; font-weight: 700;
-          cursor: pointer; transition: all 0.2s; font-family: inherit; white-space: nowrap;
-        }
-        .track-btn:hover { transform: translateY(-1px); box-shadow: 0 8px 20px rgba(5,150,105,0.4); }
-        .track-btn:active { transform: translateY(0); }
-        .hint-text { font-size: 12px; color: #6b7280; margin-top: 10px; }
-        .error-text { color: #dc2626; font-size: 13px; margin-top: 10px; font-weight: 500; }
+        .lk-sb-nav{flex:1;padding:10px 0;overflow-y:auto;}
+        .lk-sb-item{display:flex;align-items:center;gap:11px;padding:11px 18px;cursor:pointer;color:#a7f3d0;font-size:13px;font-weight:500;transition:all .2s;border-left:3px solid transparent;user-select:none;}
+        .lk-sb-item:hover{background:rgba(255,255,255,.08);color:#fff;}
+        .lk-sb-item.active{background:rgba(110,231,183,.12);color:#6ee7b7;font-weight:600;border-left-color:#6ee7b7;}
+        .lk-sb-ico{font-size:17px;width:22px;text-align:center;flex-shrink:0;}
 
-        .main-content { max-width: 860px; margin: 0 auto; padding: 40px 24px 80px; }
+        .lk-sb-foot{padding:14px 18px;border-top:1px solid rgba(255,255,255,.1);display:flex;align-items:center;gap:10px;}
+        .lk-sb-av{width:34px;height:34px;border-radius:50%;background:linear-gradient(135deg,#059669,#34d399);display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;color:#fff;flex-shrink:0;}
+        .lk-sb-uname{font-size:13px;font-weight:600;color:#fff;}
+        .lk-sb-urole{font-size:11px;color:#6ee7b7;}
 
-        .loading-wrap { text-align: center; padding: 48px 0; }
-        .spinner {
-          width: 48px; height: 48px; border: 4px solid #d1fae5; border-top-color: #059669;
-          border-radius: 50%; animation: spin 0.8s linear infinite; margin: 0 auto 16px;
-        }
-        @keyframes spin { to { transform: rotate(360deg); } }
+        /* topbar */
+        .lk-topbar{position:sticky;top:0;z-index:100;background:linear-gradient(135deg,#064e3b 0%,#065f46 50%,#047857 100%);box-shadow:0 2px 20px rgba(6,78,59,.35);height:60px;padding:0 18px;display:flex;align-items:center;justify-content:space-between;gap:14px;}
+        .lk-tb-left{display:flex;align-items:center;gap:10px;}
+        .lk-hbg{background:rgba(255,255,255,.08);border:none;cursor:pointer;width:36px;height:36px;border-radius:10px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:5px;transition:background .2s;flex-shrink:0;}
+        .lk-hbg:hover{background:rgba(255,255,255,.18);}
+        .lk-hbg span{display:block;width:19px;height:2px;background:#fff;border-radius:2px;transition:.3s;}
+        .lk-bc{color:#a7f3d0;font-size:13px;font-weight:500;}
+        .lk-bc strong{color:#fff;font-weight:700;}
+        .lk-tb-right{display:flex;align-items:center;gap:8px;}
+        .lk-bell{position:relative;width:36px;height:36px;background:rgba(255,255,255,.08);border:none;border-radius:10px;display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:16px;transition:background .2s;}
+        .lk-bell:hover{background:rgba(255,255,255,.18);}
+        .lk-bdg{position:absolute;top:7px;right:7px;width:7px;height:7px;background:#f87171;border-radius:50%;border:1.5px solid #064e3b;}
+        .lk-cta-btn{padding:7px 14px;background:#6ee7b7;color:#064e3b;border:none;border-radius:9px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;transition:.2s;white-space:nowrap;}
+        .lk-cta-btn:hover{background:#34d399;}
 
-        .result-header {
-          background: #fff; border-radius: 20px; padding: 28px; margin-bottom: 20px;
-          box-shadow: 0 4px 20px rgba(6,78,59,0.08); border: 1px solid #d1fae5;
-        }
-        .rh-top { display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: 12px; margin-bottom: 20px; }
-        .resi-badge {
-          font-size: 13px; font-weight: 700; letter-spacing: 1px; color: #065f46;
-          background: #ecfdf5; padding: 6px 14px; border-radius: 8px; border: 1px solid #a7f3d0;
-        }
-        .status-badge {
-          font-size: 13px; font-weight: 700; padding: 6px 14px; border-radius: 8px;
-          display: flex; align-items: center; gap: 6px;
-        }
-        .status-dot { width: 8px; height: 8px; border-radius: 50%; animation: pulse 1.5s ease-in-out infinite; }
-        @keyframes pulse { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:0.5;transform:scale(1.3)} }
-        .route-display {
-          display: flex; align-items: center; gap: 12px; background: #f0fdf4;
-          border-radius: 14px; padding: 18px; margin-bottom: 20px;
-        }
-        .route-city { text-align: center; flex: 1; }
-        .rc-label { font-size: 11px; color: #6b7280; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 4px; }
-        .rc-name { font-size: 16px; font-weight: 700; color: #064e3b; }
-        .route-arrow { font-size: 24px; color: #059669; flex-shrink: 0; }
-        .route-progress { flex: 2; }
-        .progress-bar-wrap { background: #d1fae5; border-radius: 100px; height: 6px; overflow: hidden; }
-        .progress-bar-fill { background: linear-gradient(90deg, #059669, #34d399); height: 100%; border-radius: 100px; transition: width 0.8s ease; }
-        .progress-label { font-size: 11px; color: #059669; text-align: center; margin-top: 4px; font-weight: 600; }
+        /* hero */
+        .lk-hero{background:linear-gradient(135deg,#064e3b 0%,#065f46 40%,#059669 80%,#10b981 100%);padding:52px 24px 76px;text-align:center;position:relative;overflow:hidden;}
+        .lk-hero::before{content:'';position:absolute;inset:0;background:url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none'%3E%3Cg fill='%23ffffff' fill-opacity='0.03'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E");}
+        .lk-pill{display:inline-flex;align-items:center;gap:6px;background:rgba(110,231,183,.15);border:1px solid rgba(110,231,183,.3);color:#6ee7b7;font-size:12px;font-weight:600;letter-spacing:1px;text-transform:uppercase;padding:6px 14px;border-radius:100px;margin-bottom:16px;position:relative;}
+        .lk-h1{font-size:clamp(24px,4vw,42px);font-weight:800;color:#fff;line-height:1.2;margin-bottom:10px;letter-spacing:-1px;position:relative;}
+        .lk-h1 span{color:#6ee7b7;}
+        .lk-hsub{color:#a7f3d0;font-size:15px;max-width:460px;margin:0 auto 28px;line-height:1.6;position:relative;}
 
-        .info-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 14px; }
-        .info-item { }
-        .ii-label { font-size: 11px; color: #9ca3af; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 3px; }
-        .ii-value { font-size: 14px; font-weight: 600; color: #064e3b; }
+        /* search card */
+        .lk-sc{background:#fff;border-radius:20px;padding:24px;max-width:580px;margin:0 auto;box-shadow:0 20px 60px rgba(0,0,0,.2);position:relative;z-index:1;}
+        .lk-sc-lbl{font-size:11px;font-weight:700;color:#065f46;margin-bottom:10px;display:block;letter-spacing:.8px;text-transform:uppercase;}
+        .lk-sc-row{display:flex;gap:10px;}
+        .lk-inp{flex:1;padding:13px 16px;border:2px solid #d1fae5;border-radius:12px;font-size:14px;font-family:inherit;color:#064e3b;background:#f0fdf4;outline:none;transition:border .2s;}
+        .lk-inp:focus{border-color:#059669;background:#fff;}
+        .lk-inp::placeholder{color:#9ca3af;}
+        .lk-tbtn{padding:13px 22px;background:linear-gradient(135deg,#059669,#047857);color:#fff;border:none;border-radius:12px;font-size:14px;font-weight:700;cursor:pointer;transition:all .2s;font-family:inherit;white-space:nowrap;}
+        .lk-tbtn:hover{transform:translateY(-1px);box-shadow:0 8px 20px rgba(5,150,105,.4);}
+        .lk-tbtn:disabled{opacity:.7;cursor:not-allowed;transform:none;}
+        .lk-hint{font-size:12px;color:#9ca3af;margin-top:8px;}
+        .lk-err{color:#dc2626;font-size:12px;margin-top:8px;font-weight:500;}
 
-        .timeline-card {
-          background: #fff; border-radius: 20px; padding: 28px;
-          box-shadow: 0 4px 20px rgba(6,78,59,0.08); border: 1px solid #d1fae5;
-        }
-        .tc-title { font-size: 16px; font-weight: 700; color: #064e3b; margin-bottom: 24px; display: flex; align-items: center; gap: 8px; }
-        .timeline { position: relative; }
-        .timeline-item { display: flex; gap: 16px; position: relative; padding-bottom: 28px; }
-        .timeline-item:last-child { padding-bottom: 0; }
-        .tl-left { display: flex; flex-direction: column; align-items: center; }
-        .tl-icon {
-          width: 40px; height: 40px; border-radius: 50%; display: flex; align-items: center; justify-content: center;
-          font-size: 18px; flex-shrink: 0; border: 2px solid;
-        }
-        .tl-icon.done { background: #ecfdf5; border-color: #059669; }
-        .tl-icon.pending { background: #f9fafb; border-color: #d1d5db; }
-        .tl-line { width: 2px; flex: 1; margin-top: 4px; min-height: 20px; }
-        .tl-line.done { background: #059669; }
-        .tl-line.pending { background: #e5e7eb; border: 1px dashed #d1d5db; }
-        .tl-content { padding-top: 8px; flex: 1; }
-        .tl-status { font-size: 14px; font-weight: 600; color: #064e3b; margin-bottom: 4px; }
-        .tl-status.pending { color: #9ca3af; }
-        .tl-meta { font-size: 12px; color: #6b7280; display: flex; gap: 12px; flex-wrap: wrap; }
-        .tl-loc::before { content: "📍 "; }
-        .tl-time::before { content: "🕐 "; }
+        /* main */
+        .lk-main{max-width:800px;margin:0 auto;padding:32px 20px 64px;}
+        .lk-spin-wrap{text-align:center;padding:48px 0;}
+        .lk-spin{width:42px;height:42px;border:4px solid #d1fae5;border-top-color:#059669;border-radius:50%;animation:lkSpin .8s linear infinite;margin:0 auto 12px;}
+        @keyframes lkSpin{to{transform:rotate(360deg)}}
 
-        .empty-state {
-          text-align: center; padding: 60px 24px;
-          background: #fff; border-radius: 20px;
-          box-shadow: 0 4px 20px rgba(6,78,59,0.06); border: 1px solid #d1fae5;
-        }
-        .es-icon { font-size: 64px; margin-bottom: 16px; }
-        .es-title { font-size: 20px; font-weight: 700; color: #064e3b; margin-bottom: 8px; }
-        .es-sub { color: #6b7280; font-size: 14px; max-width: 320px; margin: 0 auto 24px; line-height: 1.6; }
-        .es-samples { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; }
-        .sample-btn {
-          padding: 8px 16px; background: #ecfdf5; border: 1px solid #a7f3d0;
-          color: #065f46; border-radius: 8px; font-size: 13px; font-weight: 600; cursor: pointer;
-          font-family: inherit; transition: 0.2s;
-        }
-        .sample-btn:hover { background: #d1fae5; }
+        .lk-rc{background:#fff;border-radius:20px;padding:24px;margin-bottom:16px;box-shadow:0 4px 20px rgba(6,78,59,.08);border:1px solid #d1fae5;}
+        .lk-rt{display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:10px;margin-bottom:16px;}
+        .lk-rtag{font-size:12px;font-weight:700;letter-spacing:1px;color:#065f46;background:#ecfdf5;padding:5px 12px;border-radius:8px;border:1px solid #a7f3d0;}
+        .lk-stag{font-size:12px;font-weight:700;padding:5px 12px;border-radius:8px;display:flex;align-items:center;gap:5px;}
+        .lk-dot{width:7px;height:7px;border-radius:50%;animation:lkPulse 1.5s ease-in-out infinite;}
+        @keyframes lkPulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.5;transform:scale(1.3)}}
+        .lk-route{display:flex;align-items:center;gap:12px;background:#f0fdf4;border-radius:14px;padding:14px;margin-bottom:16px;flex-wrap:wrap;}
+        .lk-city{text-align:center;flex:1;min-width:70px;}
+        .lk-clbl{font-size:10px;color:#9ca3af;text-transform:uppercase;letter-spacing:.5px;margin-bottom:2px;}
+        .lk-cname{font-size:13px;font-weight:700;color:#064e3b;}
+        .lk-arr{font-size:18px;color:#059669;flex-shrink:0;}
+        .lk-pb{flex:2;min-width:70px;}
+        .lk-pbw{background:#d1fae5;border-radius:100px;height:6px;overflow:hidden;}
+        .lk-pbf{background:linear-gradient(90deg,#059669,#34d399);height:100%;border-radius:100px;}
+        .lk-pbl{font-size:10px;color:#059669;text-align:center;margin-top:3px;font-weight:600;}
+        .lk-ig{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:10px;}
+        .lk-il{font-size:10px;color:#9ca3af;text-transform:uppercase;letter-spacing:.5px;margin-bottom:2px;}
+        .lk-iv{font-size:13px;font-weight:600;color:#064e3b;}
 
-        .stats-row {
-          display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-bottom: 40px;
-        }
-        .stat-card {
-          background: #fff; border-radius: 16px; padding: 20px 16px; text-align: center;
-          border: 1px solid #d1fae5; box-shadow: 0 2px 10px rgba(6,78,59,0.05);
-        }
-        .sc-icon { font-size: 28px; margin-bottom: 8px; }
-        .sc-num { font-size: 24px; font-weight: 800; color: #064e3b; }
-        .sc-label { font-size: 12px; color: #6b7280; margin-top: 2px; }
+        .lk-tlc{background:#fff;border-radius:20px;padding:24px;box-shadow:0 4px 20px rgba(6,78,59,.08);border:1px solid #d1fae5;}
+        .lk-tlt{font-size:14px;font-weight:700;color:#064e3b;margin-bottom:20px;}
+        .lk-tli{display:flex;gap:13px;padding-bottom:22px;}
+        .lk-tli:last-child{padding-bottom:0;}
+        .lk-tlil{display:flex;flex-direction:column;align-items:center;}
+        .lk-tlico{width:36px;height:36px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0;border:2px solid;}
+        .lk-tlico.done{background:#ecfdf5;border-color:#059669;}
+        .lk-tlico.pending{background:#f9fafb;border-color:#d1d5db;}
+        .lk-tlln{width:2px;flex:1;margin-top:4px;min-height:14px;}
+        .lk-tlln.done{background:#059669;}
+        .lk-tlln.pending{background:#e5e7eb;}
+        .lk-tlb{padding-top:5px;flex:1;}
+        .lk-tls{font-size:13px;font-weight:600;color:#064e3b;margin-bottom:3px;}
+        .lk-tls.pending{color:#9ca3af;}
+        .lk-tlm{font-size:11px;color:#6b7280;display:flex;gap:10px;flex-wrap:wrap;}
 
-        @media (max-width: 640px) {
-          .nav-desktop { display: none; }
-          .hamburger { display: flex; }
-          .input-wrapper { flex-direction: column; }
-          .track-btn { width: 100%; }
-          .route-display { flex-direction: column; }
-          .stats-row { grid-template-columns: repeat(3, 1fr); }
-          .sc-num { font-size: 18px; }
+        .lk-empty{text-align:center;padding:48px 20px;background:#fff;border-radius:20px;box-shadow:0 4px 20px rgba(6,78,59,.06);border:1px solid #d1fae5;}
+        .lk-ei{font-size:52px;margin-bottom:12px;}
+        .lk-et{font-size:17px;font-weight:700;color:#064e3b;margin-bottom:6px;}
+        .lk-es{color:#6b7280;font-size:13px;max-width:300px;margin:0 auto 18px;line-height:1.6;}
+        .lk-esamps{display:flex;flex-wrap:wrap;justify-content:center;gap:8px;}
+        .lk-sbtn{padding:7px 14px;background:#ecfdf5;border:1px solid #a7f3d0;color:#065f46;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;font-family:inherit;transition:.2s;}
+        .lk-sbtn:hover{background:#d1fae5;}
+
+        .lk-stats{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:24px;}
+        .lk-stat{background:#fff;border-radius:14px;padding:18px 12px;text-align:center;border:1px solid #d1fae5;transition:transform .2s;}
+        .lk-stat:hover{transform:translateY(-3px);}
+        .lk-sti{font-size:24px;margin-bottom:6px;}
+        .lk-stn{font-size:19px;font-weight:800;color:#064e3b;}
+        .lk-stl{font-size:11px;color:#6b7280;margin-top:2px;}
+
+        @media(max-width:520px){
+          .lk-sc-row{flex-direction:column;}
+          .lk-tbtn{width:100%;}
+          .lk-route{flex-direction:column;}
+          .lk-cta-btn{display:none;}
         }
       `}</style>
 
-      {/* Sidebar Overlay */}
-      <div className={`sidebar-overlay${sidebarOpen ? " open" : ""}`} onClick={() => setSidebarOpen(false)} />
+      <div className="lk-page">
 
-      {/* Sidebar */}
-      <div className={`sidebar${sidebarOpen ? " open" : ""}`}>
-        <div className="sidebar-header">
-          <span className="logo-text">Cargo<span>Lite</span></span>
-          <button className="sidebar-close" onClick={() => setSidebarOpen(false)}>✕</button>
-        </div>
-        {navLinks.map((l) => (
-          <a key={l.label} href={l.href} className={`sidebar-link${l.active ? " active" : ""}`}>
-            <span>{l.icon}</span> {l.label}
-          </a>
-        ))}
-      </div>
+        {/* OVERLAY */}
+        <div className={`lk-ov${sidebarOpen ? " open" : ""}`} onClick={() => setSidebarOpen(false)} />
 
-      {/* Topbar */}
-      <nav className="topbar">
-        <div className="logo-text">Cargo<span>Lite</span></div>
-        <div className="nav-desktop">
-          {navLinks.map((l) => (
-            <a key={l.label} href={l.href} className={`nav-link${l.active ? " active" : ""}`}>
-              {l.label}
-            </a>
-          ))}
-        </div>
-        <button className="hamburger" onClick={() => setSidebarOpen(true)}>
-          <span /><span /><span />
-        </button>
-      </nav>
+        {/* SIDEBAR */}
+        <aside className={`lk-sb${sidebarOpen ? " open" : ""}`}>
+          <div className="lk-sb-head">
+            <span className="lk-sb-logo">Cargo<span>Lite</span></span>
+            <button className="lk-sb-x" onClick={() => setSidebarOpen(false)}>✕</button>
+          </div>
+          <nav className="lk-sb-nav">
+            {menu.map((item) => (
+              <div key={item.path} className={`lk-sb-item${pathname === item.path ? " active" : ""}`}
+                onClick={() => handleNavigate(item.path)}>
+                <span className="lk-sb-ico">{item.icon}</span>
+                <span>{item.name}</span>
+              </div>
+            ))}
+          </nav>
+          <div className="lk-sb-foot">
+            <div className="lk-sb-av">N</div>
+            <div>
+              <div className="lk-sb-uname">Nikol</div>
+              <div className="lk-sb-urole">User</div>
+            </div>
+          </div>
+        </aside>
 
-      {/* Hero + Search */}
-      <div className="hero-section">
-        <div className="hero-badge">🚚 Real-Time Tracking</div>
-        <h1 className="hero-title">Lacak Paket <span>CargoLite</span><br />Kapan Saja, Di Mana Saja</h1>
-        <p className="hero-sub">Pantau status pengiriman barang Anda secara real-time dengan akurasi tinggi dan update terkini.</p>
-
-        <div className="search-card">
-          <label className="search-label">NOMOR RESI / TRACKING ID</label>
-          <div className="input-wrapper">
-            <input
-              className="resi-input"
-              placeholder="Contoh: CGL-2024-00123"
-              value={resiInput}
-              onChange={(e) => setResiInput(e.target.value)}
-              onKeyDown={(e) => e.key === "Enter" && handleTrack()}
-            />
-            <button className="track-btn" onClick={handleTrack} disabled={loading}>
-              {loading ? "⏳ Melacak..." : "🔍 Lacak"}
+        {/* TOPBAR */}
+        <header className="lk-topbar">
+          <div className="lk-tb-left">
+            <button className="lk-hbg" onClick={() => setSidebarOpen(true)}>
+              <span /><span /><span />
             </button>
+            <span className="lk-bc">CargoLite / <strong>Lacak Paket</strong></span>
           </div>
-          {error && <p className="error-text">⚠️ {error}</p>}
-          {!error && <p className="hint-text">💡 Masukkan nomor resi untuk melihat status pengiriman Anda</p>}
+          <div className="lk-tb-right">
+            <button className="lk-bell">🔔<span className="lk-bdg" /></button>
+            <button className="lk-cta-btn" onClick={() => router.push("/kirim")}>+ Buat Pengiriman</button>
+          </div>
+        </header>
+
+        {/* HERO */}
+        <div className="lk-hero">
+          <div className="lk-pill">🚚 Real-Time Tracking</div>
+          <h1 className="lk-h1">Lacak Paket <span>CargoLite</span><br />Kapan Saja, Di Mana Saja</h1>
+          <p className="lk-hsub">Pantau status pengiriman barang Anda secara real-time dengan akurasi tinggi.</p>
+          <div className="lk-sc">
+            <label className="lk-sc-lbl">Nomor Resi / Tracking ID</label>
+            <div className="lk-sc-row">
+              <input className="lk-inp" placeholder="Contoh: CGL-2024-00123" value={resiInput}
+                onChange={(e) => setResiInput(e.target.value)}
+                onKeyDown={(e) => e.key === "Enter" && handleTrack()} />
+              <button className="lk-tbtn" onClick={handleTrack} disabled={loading}>
+                {loading ? "⏳ Melacak..." : "🔍 Lacak"}
+              </button>
+            </div>
+            {error && <p className="lk-err">⚠️ {error}</p>}
+            {!error && <p className="lk-hint">💡 Masukkan nomor resi pada bukti pengiriman Anda</p>}
+          </div>
         </div>
-      </div>
 
-      {/* Main Content */}
-      <div className="main-content">
-        {/* Stats Row */}
-        {!result && !loading && (
-          <>
-            <div className="stats-row">
-              <div className="stat-card"><div className="sc-icon">📦</div><div className="sc-num">12.4K</div><div className="sc-label">Paket Hari Ini</div></div>
-              <div className="stat-card"><div className="sc-icon">✅</div><div className="sc-num">98.7%</div><div className="sc-label">Tepat Waktu</div></div>
-              <div className="stat-card"><div className="sc-icon">🚛</div><div className="sc-num">340+</div><div className="sc-label">Kota Terjangkau</div></div>
-            </div>
-
-            <div className="empty-state">
-              <div className="es-icon">🗺️</div>
-              <h2 className="es-title">Masukkan Nomor Resi Anda</h2>
-              <p className="es-sub">Gunakan nomor resi yang tertera pada bukti pengiriman Anda untuk melihat status terkini.</p>
-              <div className="es-samples">
-                <button className="sample-btn" onClick={() => { setResiInput("CGL-2024-00123"); }}>CGL-2024-00123</button>
-                <button className="sample-btn" onClick={() => { setResiInput("CGL-2024-00456"); }}>CGL-2024-00456</button>
+        {/* CONTENT */}
+        <div className="lk-main">
+          {!result && !loading && (
+            <>
+              <div className="lk-stats">
+                <div className="lk-stat"><div className="lk-sti">📦</div><div className="lk-stn">12.4K</div><div className="lk-stl">Paket Hari Ini</div></div>
+                <div className="lk-stat"><div className="lk-sti">✅</div><div className="lk-stn">98.7%</div><div className="lk-stl">Tepat Waktu</div></div>
+                <div className="lk-stat"><div className="lk-sti">🚛</div><div className="lk-stn">340+</div><div className="lk-stl">Kota Terjangkau</div></div>
               </div>
-            </div>
-          </>
-        )}
-
-        {/* Loading */}
-        {loading && (
-          <div className="loading-wrap">
-            <div className="spinner" />
-            <p style={{ color: "#065f46", fontWeight: 600 }}>Mencari data pengiriman...</p>
-          </div>
-        )}
-
-        {/* Result */}
-        {result && (
-          <>
-            {/* Header card */}
-            <div className="result-header">
-              <div className="rh-top">
-                <span className="resi-badge">📋 {result.resi}</span>
-                <span className="status-badge" style={{ background: result.statusColor + "15", color: result.statusColor, border: `1px solid ${result.statusColor}40` }}>
-                  <span className="status-dot" style={{ background: result.statusColor }} />
-                  {result.status}
-                </span>
-              </div>
-
-              <div className="route-display">
-                <div className="route-city">
-                  <div className="rc-label">Asal</div>
-                  <div className="rc-name">🏙️ {result.origin}</div>
+              <div className="lk-empty">
+                <div className="lk-ei">🗺️</div>
+                <h2 className="lk-et">Masukkan Nomor Resi Anda</h2>
+                <p className="lk-es">Gunakan nomor resi pada bukti pengiriman untuk melihat status terkini.</p>
+                <div className="lk-esamps">
+                  <button className="lk-sbtn" onClick={() => setResiInput("CGL-2024-00123")}>CGL-2024-00123</button>
+                  <button className="lk-sbtn" onClick={() => setResiInput("CGL-2024-00456")}>CGL-2024-00456</button>
                 </div>
-                <div style={{ flex: 2 }}>
-                  <div className="progress-bar-wrap">
-                    <div className="progress-bar-fill" style={{ width: result.status === "Terkirim" ? "100%" : "65%" }} />
+              </div>
+            </>
+          )}
+          {loading && (
+            <div className="lk-spin-wrap">
+              <div className="lk-spin" />
+              <p style={{ color: "#065f46", fontWeight: 600, fontSize: 14 }}>Mencari data pengiriman...</p>
+            </div>
+          )}
+          {result && (
+            <>
+              <div className="lk-rc">
+                <div className="lk-rt">
+                  <span className="lk-rtag">📋 {result.resi}</span>
+                  <span className="lk-stag" style={{ background: result.statusColor + "15", color: result.statusColor, border: `1px solid ${result.statusColor}40` }}>
+                    <span className="lk-dot" style={{ background: result.statusColor }} />{result.status}
+                  </span>
+                </div>
+                <div className="lk-route">
+                  <div className="lk-city"><div className="lk-clbl">Asal</div><div className="lk-cname">🏙️ {result.origin}</div></div>
+                  <div className="lk-pb">
+                    <div className="lk-pbw"><div className="lk-pbf" style={{ width: result.status === "Terkirim" ? "100%" : "65%" }} /></div>
+                    <div className="lk-pbl">{result.status === "Terkirim" ? "✅ Selesai" : "🚛 65%"}</div>
                   </div>
-                  <div className="progress-label">{result.status === "Terkirim" ? "✅ Selesai" : "🚛 Dalam Perjalanan (65%)"}</div>
+                  <span className="lk-arr">→</span>
+                  <div className="lk-city"><div className="lk-clbl">Tujuan</div><div className="lk-cname">🏙️ {result.destination}</div></div>
                 </div>
-                <span className="route-arrow">→</span>
-                <div className="route-city">
-                  <div className="rc-label">Tujuan</div>
-                  <div className="rc-name">🏙️ {result.destination}</div>
+                <div className="lk-ig">
+                  <div><div className="lk-il">Pengirim</div><div className="lk-iv">{result.pengirim}</div></div>
+                  <div><div className="lk-il">Penerima</div><div className="lk-iv">{result.penerima}</div></div>
+                  <div><div className="lk-il">Estimasi Tiba</div><div className="lk-iv">📅 {result.estimasi}</div></div>
+                  <div><div className="lk-il">Berat</div><div className="lk-iv">⚖️ {result.berat}</div></div>
+                  <div><div className="lk-il">Layanan</div><div className="lk-iv">🚚 {result.layanan}</div></div>
                 </div>
               </div>
-
-              <div className="info-grid">
-                <div className="info-item"><div className="ii-label">Pengirim</div><div className="ii-value">{result.pengirim}</div></div>
-                <div className="info-item"><div className="ii-label">Penerima</div><div className="ii-value">{result.penerima}</div></div>
-                <div className="info-item"><div className="ii-label">Estimasi Tiba</div><div className="ii-value">📅 {result.estimasi}</div></div>
-                <div className="info-item"><div className="ii-label">Berat</div><div className="ii-value">⚖️ {result.berat}</div></div>
-                <div className="info-item"><div className="ii-label">Layanan</div><div className="ii-value">🚚 {result.layanan}</div></div>
-              </div>
-            </div>
-
-            {/* Timeline */}
-            <div className="timeline-card">
-              <div className="tc-title">📍 Riwayat Perjalanan Paket</div>
-              <div className="timeline">
+              <div className="lk-tlc">
+                <div className="lk-tlt">📍 Riwayat Perjalanan Paket</div>
                 {result.events.map((ev, i) => (
-                  <div className="timeline-item" key={i}>
-                    <div className="tl-left">
-                      <div className={`tl-icon ${ev.completed ? "done" : "pending"}`}>{ev.icon}</div>
-                      {i < result.events.length - 1 && (
-                        <div className={`tl-line ${ev.completed ? "done" : "pending"}`} />
-                      )}
+                  <div className="lk-tli" key={i}>
+                    <div className="lk-tlil">
+                      <div className={`lk-tlico ${ev.completed ? "done" : "pending"}`}>{ev.icon}</div>
+                      {i < result.events.length - 1 && <div className={`lk-tlln ${ev.completed ? "done" : "pending"}`} />}
                     </div>
-                    <div className="tl-content">
-                      <div className={`tl-status ${ev.completed ? "" : "pending"}`}>{ev.status}</div>
-                      <div className="tl-meta">
-                        <span className="tl-loc">{ev.location}</span>
-                        {ev.date && <span className="tl-time">{ev.date} {ev.time}</span>}
-                        {!ev.date && <span className="tl-time">{ev.time}</span>}
-                      </div>
+                    <div className="lk-tlb">
+                      <div className={`lk-tls${ev.completed ? "" : " pending"}`}>{ev.status}</div>
+                      <div className="lk-tlm"><span>📍 {ev.location}</span><span>🕐 {ev.date} {ev.time}</span></div>
                     </div>
                   </div>
                 ))}
               </div>
-            </div>
-
-            <div style={{ textAlign: "center", marginTop: 24 }}>
-              <button className="sample-btn" onClick={() => { setResult(null); setResiInput(""); }}
-                style={{ padding: "12px 28px", fontSize: 14 }}>
-                🔄 Lacak Paket Lain
-              </button>
-            </div>
-          </>
-        )}
+              <div style={{ textAlign: "center", marginTop: 18 }}>
+                <button className="lk-sbtn" style={{ padding: "10px 22px", fontSize: 13 }}
+                  onClick={() => { setResult(null); setResiInput(""); }}>🔄 Lacak Paket Lain</button>
+              </div>
+            </>
+          )}
+        </div>
       </div>
-    </div>
+    </>
   );
 }
